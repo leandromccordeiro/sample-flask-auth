@@ -5,7 +5,9 @@ from login import login_manager, login_user, current_user, logout_user, login_re
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "your_secret_key"
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
+#app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://admin:admin123@127.0.0.1:3307/flask-crud'
+
 
 db.init_app(app)
 login_manager.init_app(app)
@@ -48,7 +50,7 @@ def create_user ():
     password = data.get('password')
 
     if username and password:
-        user = User(username=username, password=password)
+        user = User(username=username, password=password, role='user')
         db.session.add(user)
         db.session.commit()
         return jsonify({'messege': 'Cadastro realizado com sucesso!'})
@@ -71,6 +73,10 @@ def update_user(id_user):
     data = request.json
     user = User.query.get(id_user)
     db.session.commit()
+
+    if id_user != current_user.id and current_user.role == 'user':
+        return jsonify({'messege': 'Operação não permitida!'}), 403
+    
     if user and data.get('password'):
         user.password = data.get('password')
         return jsonify({'messege': f'Usuário {id_user} atualizado com sucesso!'})
@@ -81,6 +87,9 @@ def update_user(id_user):
 @login_required
 def delete_user(id_user):
     user = User.query.get(id_user)
+
+    if current_user.role != 'admin':
+        return jsonify({'messege': 'Deleção não permitida!'}), 403
 
     if user and id_user != current_user.id:
         db.session.delete(user)
